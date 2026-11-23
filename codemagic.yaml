@@ -4,19 +4,36 @@ workflows:
     name: Algo Trade Pro Android
     max_build_duration: 60
     instance_type: mac_mini_m2
-
     environment:
       flutter: stable
-
     scripts:
-      - name: Create Flutter platform files
+      - name: Create Flutter platforms
         script: flutter create --platforms=android,ios .
-
       - name: Install dependencies
         script: flutter pub get
-
       - name: Build Android APK
         script: flutter build apk --debug
-
     artifacts:
       - build/app/outputs/flutter-apk/*.apk
+
+  ios-paper-trading:
+    name: Algo Trade Pro iOS
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    environment:
+      flutter: stable
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Create Flutter platforms
+        script: flutter create --platforms=android,ios .
+      - name: Install dependencies
+        script: flutter pub get
+      - name: Install CocoaPods
+        script: find . -name "Podfile" -execdir pod install \;
+      - name: Build iOS without signing
+        script: flutter build ios --debug --no-codesign
+    artifacts:
+      - build/ios/iphoneos/**/*.app
+      - /tmp/xcodebuild_logs/*.log
+
