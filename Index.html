@@ -1,1 +1,246 @@
 
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Algo Trade Pro</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#101827;color:#f5f7fb;font-family:Arial,sans-serif}
+header{background:#17243a;padding:20px;text-align:center}
+header h1{margin:0;color:#35d399;font-size:25px}
+header p{color:#aab8ca;margin-bottom:0}
+.container{padding:15px;max-width:700px;margin:auto}
+.card{background:#1c2a40;border:1px solid #34445d;border-radius:14px;padding:16px;margin:13px 0}
+h2{font-size:18px;margin-top:0;color:#35d399}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:#263851;border-radius:10px;padding:13px}
+.stat small{color:#b6c5d8}
+.stat strong{display:block;font-size:21px;margin-top:8px}
+select,button{width:100%;padding:13px;border-radius:9px;border:0;font-size:15px;margin-top:8px}
+select{background:#30435d;color:white}
+button{background:#35d399;color:#09251d;font-weight:bold;cursor:pointer}
+button.red{background:#f87171;color:#300b0b}
+button.blue{background:#60a5fa;color:#071b35}
+button:disabled{opacity:.5}
+label{display:block;margin-top:12px;color:#c7d3e2}
+input{width:100%;padding:11px;border-radius:8px;border:1px solid #50627a;background:#263851;color:white;margin-top:6px}
+.status{color:#fbbf24;font-weight:bold}
+#log{max-height:180px;overflow:auto;font-size:13px;color:#cbd5e1}
+footer{text-align:center;color:#9aabc0;padding:20px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+<h1>⚡ ALGO TRADE PRO</h1>
+<p>Upstox Equity Intraday | Paper Trading</p>
+</header>
+
+<div class="container">
+<div class="card">
+<h2>Trading Dashboard</h2>
+<div class="grid">
+<div class="stat"><small>Capital</small><strong id="capital">₹10,000</strong></div>
+<div class="stat"><small>Paper P&L</small><strong id="pnl">₹0</strong></div>
+<div class="stat"><small>Daily Loss Limit</small><strong>₹300</strong></div>
+<div class="stat"><small>Profit Target</small><strong>₹500</strong></div>
+</div>
+<p class="status" id="status">● PAPER TRADING ACTIVE</p>
+</div>
+
+<div class="card">
+<h2>Strategy Settings</h2>
+<label>Trading Mode</label>
+<select id="mode">
+<option>Manual</option>
+<option>Semi Automatic (Demo)</option>
+<option>Fully Automatic (Demo)</option>
+</select>
+<label>Strategy</label>
+<select id="strategy">
+<option>ORB + VWAP</option>
+<option>ORB</option>
+<option>VWAP</option>
+</select>
+<label>Stock Symbol</label>
+<select id="symbol">
+<option>RELIANCE</option>
+<option>HDFCBANK</option>
+<option>ICICIBANK</option>
+<option>SBIN</option>
+<option>INFY</option>
+</select>
+</div>
+
+<div class="card">
+<h2>Risk Management</h2>
+<label>Capital (₹)</label>
+<input id="capitalInput" type="number" value="10000">
+<label>Maximum Risk Per Trade (₹)</label>
+<input id="riskInput" type="number" value="100">
+<label>Daily Maximum Loss (₹)</label>
+<input id="lossInput" type="number" value="300">
+<label>Daily Profit Target (₹)</label>
+<input id="targetInput" type="number" value="500">
+<button class="blue" onclick="saveSettings()">Save Settings</button>
+</div>
+
+<div class="card">
+<h2>Demo Market Price</h2>
+<div class="stat">
+<small id="stockName">RELIANCE</small>
+<strong id="price">₹1,250.00</strong>
+<small>Illustrative simulated price only</small>
+</div>
+<button class="blue" onclick="changePrice()">Update Demo Price</button>
+</div>
+
+<div class="card">
+<h2>Paper Trade</h2>
+<label>Quantity</label>
+<input id="qty" type="number" value="1" min="1">
+<button onclick="trade('BUY')">BUY (Paper)</button>
+<button class="red" onclick="trade('SELL')">SELL (Paper)</button>
+<p id="position">No open position</p>
+<p id="tradeInfo">No trades yet</p>
+<button class="red" onclick="closePosition()">Close Position</button>
+</div>
+
+<div class="card">
+<h2>Daily Trade History</h2>
+<div id="log">Trades will appear here.</div>
+<button class="blue" onclick="resetDay()">Reset Demo Day</button>
+</div>
+
+<div class="card">
+<h2>Strategy Signal</h2>
+<p>ORB + VWAP signal calculation requires live candle data.</p>
+<p class="status">DEMO ONLY – No live signals available</p>
+</div>
+</div>
+
+<footer>
+Algo Trade Pro | Educational Paper Trading Prototype<br>
+Not connected to Upstox. No real orders are placed.
+</footer>
+
+<script>
+let price=1250;
+let position=null;
+let pnl=0;
+let locked=false;
+let capital=10000;
+let risk=100;
+let maxLoss=300;
+let target=500;
+let history=[];
+
+function money(n){
+ return "₹"+Number(n).toFixed(2);
+}
+
+function update(){
+ document.getElementById("price").innerText=money(price);
+ document.getElementById("pnl").innerText=money(pnl);
+ document.getElementById("capital").innerText=money(capital);
+ document.getElementById("stockName").innerText=
+ document.getElementById("symbol").value;
+
+ document.getElementById("status").innerText=
+ locked?"● DAILY LIMIT REACHED – TRADING STOPPED":"● PAPER TRADING ACTIVE";
+
+ document.getElementById("position").innerText=position?
+ position.side+" | Qty: "+position.qty+" | Entry: "+money(position.entry):
+ "No open position";
+}
+
+function saveSettings(){
+ capital=Number(document.getElementById("capitalInput").value);
+ risk=Number(document.getElementById("riskInput").value);
+ maxLoss=Number(document.getElementById("lossInput").value);
+ target=Number(document.getElementById("targetInput").value);
+
+ if(capital<=0||risk<=0||maxLoss<=0||target<=0){
+ alert("Enter valid positive values");
+ return;
+ }
+ alert("Demo settings saved");
+ update();
+}
+
+function changePrice(){
+ price=price+(Math.random()-.5)*10;
+ price=Math.max(1,price);
+ update();
+}
+
+function trade(side){
+ if(locked){
+ alert("Daily limit reached. No new trades.");
+ return;
+ }
+ if(position){
+ alert("Close the existing position first.");
+ return;
+ }
+ let qty=Math.floor(Number(document.getElementById("qty").value));
+ if(qty<=0){
+ alert("Enter valid quantity");
+ return;
+ }
+ if(qty*price>capital){
+ alert("Insufficient demo capital");
+ return;
+ }
+ position={side:side,qty:qty,entry:price};
+ document.getElementById("tradeInfo").innerText=
+ side+" "+qty+" shares at "+money(price);
+ addLog(side+" "+qty+" @ "+money(price));
+ update();
+}
+
+function closePosition(){
+ if(!position){
+ alert("No open position");
+ return;
+ }
+ let result=(price-position.entry)*position.qty;
+ if(position.side==="SELL") result=-result;
+ pnl+=result;
+ addLog("CLOSED | P&L: "+money(result));
+ position=null;
+
+ if(pnl<=-maxLoss || pnl>=target){
+ locked=true;
+ if(pnl<=-maxLoss) alert("Daily loss limit reached.");
+ else alert("Daily profit target reached.");
+ }
+ update();
+}
+
+function addLog(message){
+ history.unshift(new Date().toLocaleTimeString()+" - "+message);
+ document.getElementById("log").innerHTML=
+ history.map(x=>"<p>"+x+"</p>").join("");
+}
+
+function resetDay(){
+ if(position){
+ alert("Close your position before resetting.");
+ return;
+ }
+ if(!confirm("Reset today's demo P&L and trade history?"))return;
+ pnl=0;
+ locked=false;
+ history=[];
+ document.getElementById("log").innerText="Trades will appear here.";
+ update();
+}
+
+document.getElementById("symbol").addEventListener("change",update);
+update();
+</script>
+</body>
+</html>
+
