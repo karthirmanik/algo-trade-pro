@@ -3,244 +3,261 @@
 <html lang="ta">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Algo Trade Pro</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#101827;color:#f5f7fb;font-family:Arial,sans-serif}
-header{background:#17243a;padding:20px;text-align:center}
-header h1{margin:0;color:#35d399;font-size:25px}
-header p{color:#aab8ca;margin-bottom:0}
-.container{padding:15px;max-width:700px;margin:auto}
-.card{background:#1c2a40;border:1px solid #34445d;border-radius:14px;padding:16px;margin:13px 0}
-h2{font-size:18px;margin-top:0;color:#35d399}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.stat{background:#263851;border-radius:10px;padding:13px}
-.stat small{color:#b6c5d8}
-.stat strong{display:block;font-size:21px;margin-top:8px}
-select,button{width:100%;padding:13px;border-radius:9px;border:0;font-size:15px;margin-top:8px}
-select{background:#30435d;color:white}
-button{background:#35d399;color:#09251d;font-weight:bold;cursor:pointer}
-button.red{background:#f87171;color:#300b0b}
+body{margin:0;background:#101827;color:#fff;font-family:Arial}
+header{text-align:center;background:#1b2b43;padding:18px}
+h1{color:#34d399;margin:0}
+main{max-width:700px;margin:auto;padding:12px}
+.card{background:#1c2b41;border:1px solid #354861;border-radius:12px;padding:15px;margin:12px 0}
+h2{font-size:18px;color:#34d399;margin-top:0}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.stat{background:#293d58;padding:12px;border-radius:9px}
+small{color:#b9c8d9}
+strong{display:block;font-size:21px;margin-top:6px}
+button,select,input{width:100%;padding:12px;margin-top:8px;border:0;border-radius:8px;font-size:15px}
+button{background:#34d399;color:#06251b;font-weight:bold}
+button.stop{background:#f87171;color:#300}
 button.blue{background:#60a5fa;color:#071b35}
-button:disabled{opacity:.5}
-label{display:block;margin-top:12px;color:#c7d3e2}
-input{width:100%;padding:11px;border-radius:8px;border:1px solid #50627a;background:#263851;color:white;margin-top:6px}
-.status{color:#fbbf24;font-weight:bold}
-#log{max-height:180px;overflow:auto;font-size:13px;color:#cbd5e1}
-footer{text-align:center;color:#9aabc0;padding:20px;font-size:12px}
+input,select{background:#30445f;color:white}
+.log{max-height:180px;overflow:auto;font-size:13px;color:#d4dfec}
+.good{color:#34d399}.warn{color:#fbbf24}
 </style>
 </head>
 <body>
 <header>
 <h1>⚡ ALGO TRADE PRO</h1>
-<p>Upstox Equity Intraday | Paper Trading</p>
+<p>5-Min ORB + VWAP + Volume</p>
+<small>PAPER TRADING SIMULATOR ONLY</small>
 </header>
-
-<div class="container">
+<main>
 <div class="card">
-<h2>Trading Dashboard</h2>
+<h2>Dashboard</h2>
 <div class="grid">
 <div class="stat"><small>Capital</small><strong id="capital">₹10,000</strong></div>
 <div class="stat"><small>Paper P&L</small><strong id="pnl">₹0</strong></div>
-<div class="stat"><small>Daily Loss Limit</small><strong>₹300</strong></div>
-<div class="stat"><small>Profit Target</small><strong>₹500</strong></div>
+<div class="stat"><small>ORB High</small><strong id="orbH">--</strong></div>
+<div class="stat"><small>ORB Low</small><strong id="orbL">--</strong></div>
+<div class="stat"><small>VWAP</small><strong id="vwap">--</strong></div>
+<div class="stat"><small>Current Price</small><strong id="price">--</strong></div>
 </div>
-<p class="status" id="status">● PAPER TRADING ACTIVE</p>
+<p id="status" class="warn">DEMO STOPPED</p>
+<p id="clock">Market time: --</p>
 </div>
 
 <div class="card">
-<h2>Strategy Settings</h2>
-<label>Trading Mode</label>
-<select id="mode">
-<option>Manual</option>
-<option>Semi Automatic (Demo)</option>
-<option>Fully Automatic (Demo)</option>
-</select>
-<label>Strategy</label>
-<select id="strategy">
-<option>ORB + VWAP</option>
-<option>ORB</option>
-<option>VWAP</option>
-</select>
-<label>Stock Symbol</label>
+<h2>Settings</h2>
+<label>Stock</label>
 <select id="symbol">
-<option>RELIANCE</option>
-<option>HDFCBANK</option>
-<option>ICICIBANK</option>
-<option>SBIN</option>
-<option>INFY</option>
+<option>RELIANCE</option><option>HDFCBANK</option>
+<option>ICICIBANK</option><option>SBIN</option><option>INFY</option>
 </select>
-</div>
-
-<div class="card">
-<h2>Risk Management</h2>
-<label>Capital (₹)</label>
-<input id="capitalInput" type="number" value="10000">
-<label>Maximum Risk Per Trade (₹)</label>
-<input id="riskInput" type="number" value="100">
-<label>Daily Maximum Loss (₹)</label>
-<input id="lossInput" type="number" value="300">
-<label>Daily Profit Target (₹)</label>
-<input id="targetInput" type="number" value="500">
+<label>Capital (₹)</label><input id="capitalInput" type="number" value="10000">
+<label>Risk per trade (₹)</label><input id="riskInput" type="number" value="100">
+<label>Daily max loss (₹)</label><input id="lossInput" type="number" value="300">
+<label>Daily profit target (₹)</label><input id="targetInput" type="number" value="500">
 <button class="blue" onclick="saveSettings()">Save Settings</button>
 </div>
 
 <div class="card">
-<h2>Demo Market Price</h2>
-<div class="stat">
-<small id="stockName">RELIANCE</small>
-<strong id="price">₹1,250.00</strong>
-<small>Illustrative simulated price only</small>
-</div>
-<button class="blue" onclick="changePrice()">Update Demo Price</button>
-</div>
-
-<div class="card">
-<h2>Paper Trade</h2>
-<label>Quantity</label>
-<input id="qty" type="number" value="1" min="1">
-<button onclick="trade('BUY')">BUY (Paper)</button>
-<button class="red" onclick="trade('SELL')">SELL (Paper)</button>
-<p id="position">No open position</p>
-<p id="tradeInfo">No trades yet</p>
-<button class="red" onclick="closePosition()">Close Position</button>
+<h2>Automatic Paper Trading</h2>
+<p>ORB: 9:15–9:30 AM | Candle: 5 Minutes</p>
+<p>BUY: Close above ORB High + VWAP + Volume 1.5x</p>
+<p>SELL: Close below ORB Low + VWAP + Volume 1.5x</p>
+<button onclick="startDemo()">START DEMO AUTO TRADING</button>
+<button class="stop" onclick="stopDemo()">STOP</button>
+<button class="blue" onclick="newDemoDay()">RESET DEMO DAY</button>
+<p id="position">Position: None</p>
+<p id="signal">Signal: Waiting</p>
 </div>
 
 <div class="card">
-<h2>Daily Trade History</h2>
-<div id="log">Trades will appear here.</div>
-<button class="blue" onclick="resetDay()">Reset Demo Day</button>
+<h2>Recent Candles</h2>
+<div id="candles" class="log">No candles yet.</div>
 </div>
 
 <div class="card">
-<h2>Strategy Signal</h2>
-<p>ORB + VWAP signal calculation requires live candle data.</p>
-<p class="status">DEMO ONLY – No live signals available</p>
-</div>
+<h2>Trade History</h2>
+<div id="history" class="log">No trades yet.</div>
 </div>
 
-<footer>
-Algo Trade Pro | Educational Paper Trading Prototype<br>
-Not connected to Upstox. No real orders are placed.
-</footer>
+<div class="card">
+<h2>Important</h2>
+<p>This version uses generated demo prices and volume. It does not connect to Upstox.</p>
+<p>Demo candles are generated every 5 seconds for testing, not every real 5-minute market interval.</p>
+<p>Keep this page open. Closing Chrome or stopping the phone may stop the simulator.</p>
+</div>
+</main>
 
 <script>
-let price=1250;
-let position=null;
-let pnl=0;
-let locked=false;
-let capital=10000;
-let risk=100;
-let maxLoss=300;
-let target=500;
-let history=[];
+let running=false, timer=null;
+let candles=[], position=null, trades=[];
+let pnl=0, capital=10000, risk=100, maxLoss=300, target=500;
+let price=1000, totalPV=0, totalVol=0, vwap=0;
+let orbHigh=null, orbLow=null, locked=false;
+let demoIndex=0;
 
-function money(n){
- return "₹"+Number(n).toFixed(2);
+const $=id=>document.getElementById(id);
+const money=n=>"₹"+Number(n).toFixed(2);
+
+function istParts(){
+ const parts=new Intl.DateTimeFormat("en-GB",{
+  timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",
+  second:"2-digit",hourCycle:"h23"
+ }).formatToParts(new Date());
+ let o={};parts.forEach(p=>o[p.type]=p.value);
+ return {h:+o.hour,m:+o.minute,s:+o.second,
+  text:o.hour+":"+o.minute+":"+o.second};
 }
-
+function mins(t){return t.h*60+t.m}
+function inSession(){
+ let n=mins(istParts());
+ return n>=555 && n<900;
+}
 function update(){
- document.getElementById("price").innerText=money(price);
- document.getElementById("pnl").innerText=money(pnl);
- document.getElementById("capital").innerText=money(capital);
- document.getElementById("stockName").innerText=
- document.getElementById("symbol").value;
-
- document.getElementById("status").innerText=
- locked?"● DAILY LIMIT REACHED – TRADING STOPPED":"● PAPER TRADING ACTIVE";
-
- document.getElementById("position").innerText=position?
- position.side+" | Qty: "+position.qty+" | Entry: "+money(position.entry):
- "No open position";
+ $("capital").innerText=money(capital);
+ $("pnl").innerText=money(pnl);
+ $("orbH").innerText=orbHigh===null?"--":money(orbHigh);
+ $("orbL").innerText=orbLow===null?"--":money(orbLow);
+ $("vwap").innerText=vwap?money(vwap):"--";
+ $("price").innerText=money(price);
+ $("clock").innerText="India time: "+istParts().text;
+ $("position").innerText=position?
+  position.side+" | Qty "+position.qty+" | Entry "+money(position.entry)+
+  " | SL "+money(position.sl)+" | Target "+money(position.tp):
+  "Position: None";
+ $("status").innerText=locked?"DAILY LIMIT REACHED":
+  running?"DEMO AUTO RUNNING":"DEMO STOPPED";
 }
-
 function saveSettings(){
- capital=Number(document.getElementById("capitalInput").value);
- risk=Number(document.getElementById("riskInput").value);
- maxLoss=Number(document.getElementById("lossInput").value);
- target=Number(document.getElementById("targetInput").value);
-
- if(capital<=0||risk<=0||maxLoss<=0||target<=0){
- alert("Enter valid positive values");
- return;
+ capital=Number($("capitalInput").value);
+ risk=Number($("riskInput").value);
+ maxLoss=Number($("lossInput").value);
+ target=Number($("targetInput").value);
+ if([capital,risk,maxLoss,target].some(x=>!Number.isFinite(x)||x<=0)){
+  alert("Enter valid positive settings");return;
  }
- alert("Demo settings saved");
+ alert("Settings saved for this demo session");
  update();
 }
-
-function changePrice(){
- price=price+(Math.random()-.5)*10;
- price=Math.max(1,price);
+function logTrade(s){
+ trades.unshift(new Date().toLocaleTimeString()+" - "+s);
+ $("history").innerHTML=trades.map(x=>"<p>"+x+"</p>").join("");
+}
+function startDemo(){
+ if(running)return;
+ if(locked){alert("Daily limit reached. Reset to start a new demo.");return;}
+ running=true;
+ addCandle();
+ timer=setInterval(addCandle,5000);
  update();
 }
+function stopDemo(){
+ running=false;
+ if(timer)clearInterval(timer);
+ timer=null;update();
+}
+function addCandle(){
+ if(!running)return;
+ if(!inSession()){
+  stopDemo();
+  $("signal").innerText="Outside market hours (9:15–3:00)";
+  return;
+ }
+ // Generated price and volume for simulator testing only
+ let open=price;
+ let drift=(Math.random()-.48)*3;
+ price=Math.max(1,price+drift);
+ let close=price;
+ let high=Math.max(open,close)+Math.random()*1.2;
+ let low=Math.min(open,close)-Math.random()*1.2;
+ let volume=Math.floor(500+Math.random()*1800);
+ let t=istParts();
+ let candle={open,high,low,close,volume,time:t.text};
+ candles.push(candle);
+ if(candles.length>100)candles.shift();
 
-function trade(side){
- if(locked){
- alert("Daily limit reached. No new trades.");
- return;
+ totalPV+=close*volume;
+ totalVol+=volume;
+ vwap=totalPV/totalVol;
+
+ // First three demo candles form opening range
+ if(candles.length<=3){
+  orbHigh=orbHigh===null?high:Math.max(orbHigh,high);
+  orbLow=orbLow===null?low:Math.min(orbLow,low);
  }
- if(position){
- alert("Close the existing position first.");
- return;
+ managePosition(candle);
+
+ let signal="WAIT";
+ if(candles.length>=24 && orbHigh!==null && !position && !locked){
+  let previous=candles.slice(-21,-1);
+  let avgVol=previous.reduce((a,c)=>a+c.volume,0)/20;
+  let volumeOK=volume>=avgVol*1.5;
+  if(close>orbHigh && close>vwap && volumeOK)signal="BUY";
+  if(close<orbLow && close<vwap && volumeOK)signal="SELL";
+  if(signal!=="WAIT")openPosition(signal,close);
  }
- let qty=Math.floor(Number(document.getElementById("qty").value));
- if(qty<=0){
- alert("Enter valid quantity");
- return;
- }
- if(qty*price>capital){
- alert("Insufficient demo capital");
- return;
- }
- position={side:side,qty:qty,entry:price};
- document.getElementById("tradeInfo").innerText=
- side+" "+qty+" shares at "+money(price);
- addLog(side+" "+qty+" @ "+money(price));
+ $("signal").innerText="Signal: "+signal+
+  " | Volume: "+volume+" | VWAP: "+money(vwap);
+ $("candles").innerHTML=candles.slice(-8).reverse().map(c=>
+  "<p>"+c.time+" O:"+money(c.open)+" H:"+money(c.high)+
+  " L:"+money(c.low)+" C:"+money(c.close)+" V:"+c.volume+"</p>"
+ ).join("");
  update();
 }
-
-function closePosition(){
- if(!position){
- alert("No open position");
- return;
+function openPosition(side,entry){
+ let sl=side==="BUY"?orbLow:orbHigh;
+ let distance=Math.abs(entry-sl);
+ if(!distance||!Number.isFinite(distance))return;
+ let qty=Math.floor(Math.min(risk/distance,capital/entry));
+ if(qty<1){$("signal").innerText="Signal skipped: quantity below 1";return;}
+ let tp=side==="BUY"?entry+2*distance:entry-2*distance;
+ position={side,entry,sl,tp,qty};
+ logTrade("OPEN "+side+" "+qty+" @ "+money(entry));
+}
+function managePosition(c){
+ if(!position)return;
+ let p=position;
+ let exit=null;
+ if(p.side==="BUY"){
+  if(c.low<=p.sl)exit={price:p.sl,reason:"STOP LOSS"};
+  else if(c.high>=p.tp)exit={price:p.tp,reason:"TARGET"};
+ }else{
+  if(c.high>=p.sl)exit={price:p.sl,reason:"STOP LOSS"};
+  else if(c.low<=p.tp)exit={price:p.tp,reason:"TARGET"};
  }
- let result=(price-position.entry)*position.qty;
- if(position.side==="SELL") result=-result;
+ if(exit)closePosition(exit.price,exit.reason);
+}
+function closePosition(exitPrice,reason){
+ if(!position)return;
+ let p=position;
+ let result=(exitPrice-p.entry)*p.qty*(p.side==="BUY"?1:-1);
  pnl+=result;
- addLog("CLOSED | P&L: "+money(result));
+ logTrade("CLOSE "+p.side+" @ "+money(exitPrice)+
+  " | "+reason+" | P&L "+money(result));
  position=null;
-
  if(pnl<=-maxLoss || pnl>=target){
- locked=true;
- if(pnl<=-maxLoss) alert("Daily loss limit reached.");
- else alert("Daily profit target reached.");
+  locked=true;
+  stopDemo();
+  $("signal").innerText="Daily limit reached. Trading stopped.";
  }
  update();
 }
-
-function addLog(message){
- history.unshift(new Date().toLocaleTimeString()+" - "+message);
- document.getElementById("log").innerHTML=
- history.map(x=>"<p>"+x+"</p>").join("");
-}
-
-function resetDay(){
- if(position){
- alert("Close your position before resetting.");
- return;
- }
- if(!confirm("Reset today's demo P&L and trade history?"))return;
- pnl=0;
- locked=false;
- history=[];
- document.getElementById("log").innerText="Trades will appear here.";
+function newDemoDay(){
+ if(position){alert("Close open position first.");return;}
+ stopDemo();
+ candles=[];trades=[];pnl=0;locked=false;
+ orbHigh=null;orbLow=null;totalPV=0;totalVol=0;vwap=0;
+ price=1000;demoIndex=0;
+ $("history").innerText="No trades yet.";
+ $("candles").innerText="No candles yet.";
+ $("signal").innerText="Signal: Waiting";
  update();
 }
-
-document.getElementById("symbol").addEventListener("change",update);
+setInterval(update,1000);
 update();
 </script>
 </body>
 </html>
-
