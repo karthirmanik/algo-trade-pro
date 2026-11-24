@@ -1,4 +1,9 @@
-port" content="width=device-width,initial-scale=1">
+
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Algo Trade Pro</title>
 <style>
 *{box-sizing:border-box}
@@ -19,6 +24,7 @@ button.blue{background:#60a5fa;color:#071b35}
 input,select{background:#30445f;color:white}
 .log{max-height:180px;overflow:auto;font-size:13px;color:#d4dfec}
 .good{color:#34d399}.warn{color:#fbbf24}
+label{display:block;margin-top:12px;color:#d4dfec}
 </style>
 </head>
 <body>
@@ -27,11 +33,14 @@ input,select{background:#30445f;color:white}
 <p>5-Min ORB + VWAP + Volume</p>
 <small>PAPER TRADING SIMULATOR ONLY</small>
 </header>
+
 <main>
 <div class="card">
 <h2>Dashboard</h2>
 <div class="grid">
+<div class="stat"><small>Selected Stock</small><strong id="stockView">HDFCBANK</strong></div>
 <div class="stat"><small>Capital</small><strong id="capital">₹10,000</strong></div>
+<div class="stat"><small>Available Capital</small><strong id="available">₹10,000</strong></div>
 <div class="stat"><small>Paper P&L</small><strong id="pnl">₹0</strong></div>
 <div class="stat"><small>ORB High</small><strong id="orbH">--</strong></div>
 <div class="stat"><small>ORB Low</small><strong id="orbL">--</strong></div>
@@ -41,19 +50,51 @@ input,select{background:#30445f;color:white}
 <p id="status" class="warn">DEMO STOPPED</p>
 <p id="clock">Market time: --</p>
 </div>
- 
+
 <div class="card">
 <h2>Settings</h2>
-<label>Stock</label>
+
+<label>Select NSE Stock</label>
 <select id="symbol">
-<option>RELIANCE</option><option>HDFCBANK</option>
-<option>ICICIBANK</option><option>SBIN</option><option>INFY</option>
+<option>HDFCBANK</option>
+<option>RELIANCE</option>
+<option>ICICIBANK</option>
+<option>SBIN</option>
+<option>INFY</option>
+<option>TCS</option>
+<option>ITC</option>
+<option>AXISBANK</option>
+<option>KOTAKBANK</option>
+<option>LT</option>
+<option>BHARTIARTL</option>
+<option>MARUTI</option>
+<option>BAJFINANCE</option>
+<option>SUNPHARMA</option>
+<option>WIPRO</option>
+<option>ADANIENT</option>
+<option>POWERGRID</option>
+<option>ONGC</option>
+<option>BEL</option>
+<option>TATAMOTORS</option>
 </select>
-<label>Capital (₹)</label><input id="capitalInput" type="number" value="10000">
-<label>Risk per trade (₹)</label><input id="riskInput" type="number" value="100">
-<label>Daily max loss (₹)</label><input id="lossInput" type="number" value="300">
-<label>Daily profit target (₹)</label><input id="targetInput" type="number" value="500">
-<button class="blue" onclick="saveSettings()">Save Settings</button>
+
+<label>Trading Capital (₹)</label>
+<input id="capitalInput" type="number" min="1" value="10000">
+
+<label>Risk Per Trade (₹)</label>
+<input id="riskInput" type="number" min="1" value="100">
+
+<label>Daily Maximum Loss (₹)</label>
+<input id="lossInput" type="number" min="1" value="300">
+
+<label>Daily Profit Target (₹)</label>
+<input id="targetInput" type="number" min="1" value="500">
+
+<label>Maximum Profit Lock (₹)</label>
+<input id="profitLockInput" type="number" min="1" value="1000">
+
+<button class="blue" onclick="saveSettings()">SAVE SETTINGS</button>
+<p class="warn">Settings மாற்றுவதற்கு முன் Demo-வை Stop செய்யவும். Open Position இருக்கும்போது மாற்ற முடியாது.</p>
 </div>
 
 <div class="card">
@@ -79,101 +120,186 @@ input,select{background:#30445f;color:white}
 </div>
 
 <div class="card">
-<h2>Important</h2>
-<p>This version uses generated demo prices and volume. It does not connect to Upstox.</p>
-<p>Demo candles are generated every 5 seconds for testing, not every real 5-minute market interval.</p>
-<p>Keep this page open. Closing Chrome or stopping the phone may stop the simulator.</p>
-</div>
- 
-<div class="card">
-  <h2>Historical Backtest</h2>
-  <p>Upload 5-minute historical candle CSV</p>
-  <label>Historical CSV File</label>
-  <input type="file" id="backtestFile" accept=".csv,text/csv">
-  <button onclick="runBacktest()">RUN BACKTEST</button>
-  <div id="backtestResult" class="log">
-    No backtest run yet.
-  </div>
+<h2>Historical Backtest</h2>
+<p>Upload 5-minute historical candle CSV</p>
+<label>Historical CSV File</label>
+<input type="file" id="backtestFile" accept=".csv,text/csv">
+<button onclick="runBacktest()">RUN BACKTEST</button>
+<div id="backtestResult" class="log">No backtest run yet.</div>
 </div>
 
+<div class="card">
+<h2>Important</h2>
+<p>This version uses generated demo prices and volume. It does not connect to Upstox or NSE live data.</p>
+<p>Demo candles are generated every 5 seconds for testing, not every real 5-minute interval.</p>
+<p>Selected Stock is used as a label. The generated price is not that stock's actual market price.</p>
+<p>Keep this page open. Closing the browser may stop the simulator.</p>
+</div>
 </main>
 
 <script>
-let running=false, timer=null;
-let candles=[], position=null, trades=[];
-let pnl=0, capital=10000, risk=100, maxLoss=300, target=500;
-let price=1000, totalPV=0, totalVol=0, vwap=0;
-let orbHigh=null, orbLow=null, locked=false;
-let demoIndex=0;
+let running=false,timer=null;
+let candles=[],position=null,trades=[];
+let pnl=0,capital=10000,risk=100;
+let maxLoss=300,target=500,profitLock=1000;
+let price=1000,totalPV=0,totalVol=0,vwap=0;
+let orbHigh=null,orbLow=null,locked=false;
 
 const $=id=>document.getElementById(id);
 const money=n=>"₹"+Number(n).toFixed(2);
+const symbol=()=>$("symbol").value;
 
 function istParts(){
- const parts=new Intl.DateTimeFormat("en-GB",{
-  timeZone:"Asia/Kolkata",hour:"2-digit",minute:"2-digit",
+ const p=new Intl.DateTimeFormat("en-GB",{
+  timeZone:"Asia/Kolkata",
+  hour:"2-digit",minute:"2-digit",
   second:"2-digit",hourCycle:"h23"
  }).formatToParts(new Date());
- let o={};parts.forEach(p=>o[p.type]=p.value);
+ let o={};
+ p.forEach(x=>o[x.type]=x.value);
  return {h:+o.hour,m:+o.minute,s:+o.second,
-  text:o.hour+":"+o.minute+":"+o.second};
+ text:o.hour+":"+o.minute+":"+o.second};
 }
+
 function mins(t){return t.h*60+t.m}
+
 function inSession(){
  let n=mins(istParts());
- return n>=555 && n<900;
+ return n>=555&&n<900;
 }
+
 function update(){
  $("capital").innerText=money(capital);
+ $("available").innerText=money(Math.max(0,capital+pnl));
  $("pnl").innerText=money(pnl);
+ $("stockView").innerText=symbol();
  $("orbH").innerText=orbHigh===null?"--":money(orbHigh);
  $("orbL").innerText=orbLow===null?"--":money(orbLow);
  $("vwap").innerText=vwap?money(vwap):"--";
  $("price").innerText=money(price);
  $("clock").innerText="India time: "+istParts().text;
+
  $("position").innerText=position?
-  position.side+" | Qty "+position.qty+" | Entry "+money(position.entry)+
-  " | SL "+money(position.sl)+" | Target "+money(position.tp):
-  "Position: None";
+ position.side+" | Qty "+position.qty+
+ " | Entry "+money(position.entry)+
+ " | SL "+money(position.sl)+
+ " | Target "+money(position.tp):
+ "Position: None";
+
  $("status").innerText=locked?"DAILY LIMIT REACHED":
-  running?"DEMO AUTO RUNNING":"DEMO STOPPED";
+ running?"DEMO AUTO RUNNING":"DEMO STOPPED";
 }
+
 function saveSettings(){
- capital=Number($("capitalInput").value);
- risk=Number($("riskInput").value);
- maxLoss=Number($("lossInput").value);
- target=Number($("targetInput").value);
- if([capital,risk,maxLoss,target].some(x=>!Number.isFinite(x)||x<=0)){
-  alert("Enter valid positive settings");return;
+ if(running){
+  alert("Please STOP Demo before changing settings.");
+  return;
  }
- alert("Settings saved for this demo session");
+ if(position){
+  alert("Open Position உள்ளது. முதலில் அதை Close செய்யவும்.");
+  return;
+ }
+
+ let newCapital=Number($("capitalInput").value);
+ let newRisk=Number($("riskInput").value);
+ let newLoss=Number($("lossInput").value);
+ let newTarget=Number($("targetInput").value);
+ let newLock=Number($("profitLockInput").value);
+
+ if([newCapital,newRisk,newLoss,newTarget,newLock]
+ .some(x=>!Number.isFinite(x)||x<=0)){
+  alert("Enter valid positive values.");
+  return;
+ }
+
+ if(newRisk>newCapital){
+  alert("Risk per trade cannot exceed Capital.");
+  return;
+ }
+
+ capital=newCapital;
+ risk=newRisk;
+ maxLoss=newLoss;
+ target=newTarget;
+ profitLock=newLock;
+
+ // Reset the demo when the selected stock changes
+ resetMarketData();
+
+ try{
+  localStorage.setItem("algoSettings",JSON.stringify({
+   symbol:symbol(),capital,risk,maxLoss,target,profitLock
+  }));
+ }catch(e){}
+
  update();
+ alert("Settings Saved Successfully!");
 }
+
+function loadSettings(){
+ try{
+  const s=JSON.parse(localStorage.getItem("algoSettings"));
+  if(!s)return;
+  if(s.symbol)$("symbol").value=s.symbol;
+  capital=s.capital||10000;
+  risk=s.risk||100;
+  maxLoss=s.maxLoss||300;
+  target=s.target||500;
+  profitLock=s.profitLock||1000;
+  $("capitalInput").value=capital;
+  $("riskInput").value=risk;
+  $("lossInput").value=maxLoss;
+  $("targetInput").value=target;
+  $("profitLockInput").value=profitLock;
+ }catch(e){}
+}
+
+function resetMarketData(){
+ candles=[];
+ orbHigh=null;
+ orbLow=null;
+ totalPV=0;
+ totalVol=0;
+ vwap=0;
+ price=1000;
+ $("candles").innerText="No candles yet.";
+ $("signal").innerText="Signal: Waiting";
+}
+
 function logTrade(s){
  trades.unshift(new Date().toLocaleTimeString()+" - "+s);
  $("history").innerHTML=trades.map(x=>"<p>"+x+"</p>").join("");
 }
+
 function startDemo(){
  if(running)return;
- if(locked){alert("Daily limit reached. Reset to start a new demo.");return;}
+ if(locked){
+  alert("Daily limit reached. Reset Demo Day.");
+  return;
+ }
  running=true;
  addCandle();
  timer=setInterval(addCandle,5000);
  update();
 }
+
 function stopDemo(){
  running=false;
  if(timer)clearInterval(timer);
- timer=null;update();
+ timer=null;
+ update();
 }
+
 function addCandle(){
  if(!running)return;
+
  if(!inSession()){
   stopDemo();
   $("signal").innerText="Outside market hours (9:15–3:00)";
   return;
  }
- // Generated price and volume for simulator testing only
+
+ // Generated prices ONLY for simulator testing
  let open=price;
  let drift=(Math.random()-.48)*3;
  price=Math.max(1,price+drift);
@@ -182,6 +308,7 @@ function addCandle(){
  let low=Math.min(open,close)-Math.random()*1.2;
  let volume=Math.floor(500+Math.random()*1800);
  let t=istParts();
+
  let candle={open,high,low,close,volume,time:t.text};
  candles.push(candle);
  if(candles.length>100)candles.shift();
@@ -190,44 +317,69 @@ function addCandle(){
  totalVol+=volume;
  vwap=totalPV/totalVol;
 
- // First three demo candles form opening range
+ // First three generated candles form opening range
  if(candles.length<=3){
   orbHigh=orbHigh===null?high:Math.max(orbHigh,high);
   orbLow=orbLow===null?low:Math.min(orbLow,low);
  }
+
  managePosition(candle);
 
  let signal="WAIT";
- if(candles.length>=24 && orbHigh!==null && !position && !locked){
+
+ if(candles.length>=24&&orbHigh!==null&&!position&&!locked){
   let previous=candles.slice(-21,-1);
   let avgVol=previous.reduce((a,c)=>a+c.volume,0)/20;
   let volumeOK=volume>=avgVol*1.5;
-  if(close>orbHigh && close>vwap && volumeOK)signal="BUY";
-  if(close<orbLow && close<vwap && volumeOK)signal="SELL";
+
+  if(close>orbHigh&&close>vwap&&volumeOK)signal="BUY";
+  if(close<orbLow&&close<vwap&&volumeOK)signal="SELL";
+
   if(signal!=="WAIT")openPosition(signal,close);
  }
+
  $("signal").innerText="Signal: "+signal+
-  " | Volume: "+volume+" | VWAP: "+money(vwap);
+ " | Volume: "+volume+" | VWAP: "+money(vwap);
+
  $("candles").innerHTML=candles.slice(-8).reverse().map(c=>
-  "<p>"+c.time+" O:"+money(c.open)+" H:"+money(c.high)+
-  " L:"+money(c.low)+" C:"+money(c.close)+" V:"+c.volume+"</p>"
+  "<p>"+c.time+" O:"+money(c.open)+
+  " H:"+money(c.high)+" L:"+money(c.low)+
+  " C:"+money(c.close)+" V:"+c.volume+"</p>"
  ).join("");
+
  update();
 }
+
 function openPosition(side,entry){
  let sl=side==="BUY"?orbLow:orbHigh;
  let distance=Math.abs(entry-sl);
+ let available=capital+pnl;
+
  if(!distance||!Number.isFinite(distance))return;
- let qty=Math.floor(Math.min(risk/distance,capital/entry));
- if(qty<1){$("signal").innerText="Signal skipped: quantity below 1";return;}
- let tp=side==="BUY"?entry+2*distance:entry-2*distance;
+
+ let qty=Math.floor(Math.min(
+  risk/distance,
+  available/entry
+ ));
+
+ if(qty<1){
+  $("signal").innerText="Signal skipped: Quantity below 1";
+  return;
+ }
+
+ let tp=side==="BUY"?
+ entry+2*distance:entry-2*distance;
+
  position={side,entry,sl,tp,qty};
- logTrade("OPEN "+side+" "+qty+" @ "+money(entry));
+ logTrade("OPEN "+symbol()+" "+side+
+ " Qty "+qty+" @ "+money(entry));
 }
+
 function managePosition(c){
  if(!position)return;
  let p=position;
  let exit=null;
+
  if(p.side==="BUY"){
   if(c.low<=p.sl)exit={price:p.sl,reason:"STOP LOSS"};
   else if(c.high>=p.tp)exit={price:p.tp,reason:"TARGET"};
@@ -235,208 +387,206 @@ function managePosition(c){
   if(c.high>=p.sl)exit={price:p.sl,reason:"STOP LOSS"};
   else if(c.low<=p.tp)exit={price:p.tp,reason:"TARGET"};
  }
+
  if(exit)closePosition(exit.price,exit.reason);
 }
+
 function closePosition(exitPrice,reason){
  if(!position)return;
+
  let p=position;
- let result=(exitPrice-p.entry)*p.qty*(p.side==="BUY"?1:-1);
+ let result=(exitPrice-p.entry)*p.qty*
+ (p.side==="BUY"?1:-1);
+
  pnl+=result;
+
  logTrade("CLOSE "+p.side+" @ "+money(exitPrice)+
-  " | "+reason+" | P&L "+money(result));
+ " | "+reason+" | P&L "+money(result));
+
  position=null;
- if(pnl<=-maxLoss || pnl>=target){
+
+ if(pnl<=-maxLoss||pnl>=target||pnl>=profitLock){
   locked=true;
   stopDemo();
-  $("signal").innerText="Daily limit reached. Trading stopped.";
+  $("signal").innerText="Daily Profit/Loss Lock reached. Trading stopped.";
  }
+
  update();
 }
+
 function newDemoDay(){
- if(position){alert("Close open position first.");return;}
+ if(position){
+  alert("Close open position first.");
+  return;
+ }
+
  stopDemo();
- candles=[];trades=[];pnl=0;locked=false;
- orbHigh=null;orbLow=null;totalPV=0;totalVol=0;vwap=0;
- price=1000;demoIndex=0;
+ resetMarketData();
+ trades=[];
+ pnl=0;
+ locked=false;
+
  $("history").innerText="No trades yet.";
- $("candles").innerText="No candles yet.";
  $("signal").innerText="Signal: Waiting";
  update();
 }
-setInterval(update,1000);
-update();
- 
+
+// Historical backtest
 function runBacktest(){
-  const file = document.getElementById("backtestFile").files[0];
-  const result = document.getElementById("backtestResult");
+ const file=$("backtestFile").files[0];
+ const result=$("backtestResult");
 
-  if(!file){
-    result.innerText = "Please upload historical CSV data.";
-    return;
-  }
+ if(!file){
+  result.innerText="Please upload historical CSV data.";
+  return;
+ }
 
-  const reader = new FileReader();
+ const reader=new FileReader();
 
-  reader.onload = function(e){
-    try{
-      const lines = e.target.result.trim().split(/\r?\n/);
-      const headers = lines[0].split(",").map(x=>x.trim().toLowerCase());
-      const idx = name => headers.indexOf(name);
+ reader.onload=function(e){
+  try{
+   const lines=e.target.result.trim().split(/\r?\n/);
+   const headers=lines[0].split(",").map(x=>x.trim().toLowerCase());
+   const idx=name=>headers.indexOf(name);
 
-      const ti = idx("timestamp");
-      const oi = idx("open");
-      const hi = idx("high");
-      const li = idx("low");
-      const ci = idx("close");
-      const vi = idx("volume");
+   const ti=idx("timestamp"),oi=idx("open"),
+   hi=idx("high"),li=idx("low"),ci=idx("close"),vi=idx("volume");
 
-      if([ti,oi,hi,li,ci,vi].some(x=>x<0))
-        throw new Error("Required columns: timestamp,open,high,low,close,volume");
+   if([ti,oi,hi,li,ci,vi].some(x=>x<0))
+    throw new Error("Required columns: timestamp,open,high,low,close,volume");
 
-      const data = lines.slice(1).map(line=>{
-        const c=line.split(",");
-        return {
-          time:new Date(c[ti].trim().replace(" ","T")),
-          open:+c[oi], high:+c[hi],
-          low:+c[li], close:+c[ci],
-          volume:+c[vi]
-        };
-      }).filter(c=>!isNaN(c.time.getTime()) &&
-        [c.open,c.high,c.low,c.close,c.volume].every(Number.isFinite))
-       .sort((a,b)=>a.time-b.time);
+   const data=lines.slice(1).map(line=>{
+    const c=line.split(",");
+    return {
+     time:new Date(c[ti].trim().replace(" ","T")),
+     open:+c[oi],high:+c[hi],low:+c[li],
+     close:+c[ci],volume:+c[vi]
+    };
+   }).filter(c=>!isNaN(c.time.getTime())&&
+    [c.open,c.high,c.low,c.close,c.volume].every(Number.isFinite))
+    .sort((a,b)=>a.time-b.time);
 
-      if(data.length<100) throw new Error("Insufficient candle data.");
+   if(data.length<100)throw new Error("Insufficient candle data.");
 
-      let trades=[], daily={}, vwapPV=0, vwapVol=0;
-      let day="", orbHigh=-Infinity, orbLow=Infinity;
-      let dayBars=[], done=false, dailyPnL=0;
+   let results=[];
+   let day="",orbH=-Infinity,orbL=Infinity;
+   let pv=0,vol=0,done=false,dayPnL=0;
+   let lockedDay=false;
 
-      function closeTrade(t,price,reason){
-        const pnl=(t.side==="BUY"?1:-1)*t.qty*(price-t.entry);
-        dailyPnL+=pnl;
-        trades.push({...t,exit:price,pnl,reason});
-        daily[t.day]=(daily[t.day]||0)+pnl;
-      }
+   for(let i=0;i<data.length;i++){
+    const c=data[i];
+    const d=c.time.toISOString().slice(0,10);
+    const hm=c.time.getUTCHours()*60+c.time.getUTCMinutes();
 
-      for(let i=0;i<data.length;i++){
-        const c=data[i];
-        const d=c.time.toISOString().slice(0,10);
-        const hm=c.time.getHours()*60+c.time.getMinutes();
-
-        if(d!==day){
-          day=d; orbHigh=-Infinity; orbLow=Infinity;
-          dayBars=[]; done=false; dailyPnL=0;
-          vwapPV=0; vwapVol=0;
-        }
-
-        const typical=(c.high+c.low+c.close)/3;
-        vwapPV+=typical*c.volume;
-        vwapVol+=c.volume;
-        const vwap=vwapVol?vwapPV/vwapVol:0;
-
-        if(hm>=555 && hm<570){
-          orbHigh=Math.max(orbHigh,c.high);
-          orbLow=Math.min(orbLow,c.low);
-          dayBars.push(c);
-          continue;
-        }
-
-        if(hm<570 || hm>=910){
-          dayBars.push(c);
-          continue;
-        }
-
-        if(done || !Number.isFinite(orbHigh) ||
-           !Number.isFinite(orbLow)) {
-          dayBars.push(c);
-          continue;
-        }
-
-        const previous=data.slice(Math.max(0,i-20),i);
-        const avgVol=previous.length===20
-          ? previous.reduce((s,x)=>s+x.volume,0)/20 : 0;
-
-        const buy=c.close>orbHigh && c.close>vwap &&
-                  avgVol>0 && c.volume>=avgVol*1.5;
-        const sell=c.close<orbLow && c.close<vwap &&
-                   avgVol>0 && c.volume>=avgVol*1.5;
-
-        if(!buy && !sell){
-          dayBars.push(c);
-          continue;
-        }
-
-        const side=buy?"BUY":"SELL";
-        const entry=c.close;
-        const sl=buy?orbLow:orbHigh;
-        const distance=Math.abs(entry-sl);
-        const qty=distance>0?Math.floor(100/distance):0;
-
-        if(qty<1){
-          dayBars.push(c);
-          continue;
-        }
-
-        const target=buy
-          ?entry+2*distance:entry-2*distance;
-
-        const t={day:d,side,entry,sl,target,qty};
-
-        for(let j=i+1;j<data.length;j++){
-          const x=data[j];
-          if(x.time.toISOString().slice(0,10)!==d) break;
-
-          const stop=buy?x.low<=sl:x.high>=sl;
-          const profit=buy?x.high>=target:x.low<=target;
-
-          if(stop || profit){
-            closeTrade(t,stop?sl:target,
-                       stop?"STOP LOSS":"TARGET");
-            break;
-          }
-
-          if(j===data.length-1 ||
-             data[j+1].time.toISOString().slice(0,10)!==d){
-            closeTrade(t,x.close,"EOD");
-          }
-        }
-
-        done=true;
-        dayBars.push(c);
-      }
-
-      const wins=trades.filter(t=>t.pnl>0).length;
-      const losses=trades.length-wins;
-      const net=trades.reduce((s,t)=>s+t.pnl,0);
-      let equity=0, peak=0, maxDD=0;
-
-      trades.forEach(t=>{
-        equity+=t.pnl;
-        peak=Math.max(peak,equity);
-        maxDD=Math.max(maxDD,peak-equity);
-      });
-
-      result.innerHTML=`
-        <h3>Backtest Results</h3>
-        Total Trades: ${trades.length}<br>
-        Wins: ${wins}<br>
-        Losses: ${losses}<br>
-        Win Rate: ${trades.length?(wins/trades.length*100).toFixed(2):0}%<br>
-        Net P&L: ₹${net.toFixed(2)}<br>
-        Maximum Drawdown: ₹${maxDD.toFixed(2)}
-        <hr>
-        ${trades.map(t=>
-          `${t.day} | ${t.side} | Qty ${t.qty} | ₹${t.pnl.toFixed(2)} | ${t.reason}`
-        ).join("<br>")}
-      `;
-    }catch(err){
-      result.innerText="Error: "+err.message;
+    if(d!==day){
+     day=d;orbH=-Infinity;orbL=Infinity;
+     pv=0;vol=0;done=false;dayPnL=0;lockedDay=false;
     }
-  };
 
-  reader.readAsText(file);
+    const typical=(c.high+c.low+c.close)/3;
+    pv+=typical*c.volume;
+    vol+=c.volume;
+    const vw=vol?pv/vol:0;
+
+    if(hm>=555&&hm<570){
+     orbH=Math.max(orbH,c.high);
+     orbL=Math.min(orbL,c.low);
+     continue;
+    }
+
+    if(hm<570||hm>=900||done||lockedDay)continue;
+
+    if(!Number.isFinite(orbH)||!Number.isFinite(orbL))continue;
+
+    const previous=data.slice(Math.max(0,i-20),i);
+    const avgVol=previous.length===20?
+     previous.reduce((s,x)=>s+x.volume,0)/20:0;
+
+    const buy=c.close>orbH&&c.close>vw&&avgVol>0&&c.volume>=avgVol*1.5;
+    const sell=c.close<orbL&&c.close<vw&&avgVol>0&&c.volume>=avgVol*1.5;
+
+    if(!buy&&!sell)continue;
+
+    const side=buy?"BUY":"SELL";
+    const sl=buy?orbL:orbH;
+    const distance=Math.abs(c.close-sl);
+    const qty=distance>0?
+     Math.floor(Math.min(risk/distance,capital/c.close)):0;
+
+    if(qty<1)continue;
+
+    const tp=buy?c.close+2*distance:c.close-2*distance;
+    let exitPrice=null,reason="EOD";
+
+    for(let j=i+1;j<data.length;j++){
+     const x=data[j];
+     if(x.time.toISOString().slice(0,10)!==d)break;
+
+     const stop=buy?x.low<=sl:x.high>=sl;
+     const profit=buy?x.high>=tp:x.low<=tp;
+
+     if(stop||profit){
+      exitPrice=stop?sl:tp;
+      reason=stop?"STOP LOSS":"TARGET";
+      break;
+     }
+
+     if(j===data.length-1||
+       data[j+1].time.toISOString().slice(0,10)!==d){
+      exitPrice=x.close;
+     }
+    }
+
+    if(exitPrice===null)continue;
+
+    const tradePnL=(buy?1:-1)*qty*(exitPrice-c.close);
+    dayPnL+=tradePnL;
+
+    results.push({side,qty,pnl:tradePnL,reason});
+
+    if(dayPnL<=-maxLoss||dayPnL>=target||dayPnL>=profitLock)
+     lockedDay=true;
+
+    done=true;
+   }
+
+   const wins=results.filter(t=>t.pnl>0).length;
+   const net=results.reduce((s,t)=>s+t.pnl,0);
+   let equity=0,peak=0,maxDD=0;
+
+   results.forEach(t=>{
+    equity+=t.pnl;
+    peak=Math.max(peak,equity);
+    maxDD=Math.max(maxDD,peak-equity);
+   });
+
+   result.innerHTML=`
+   <h3>Backtest Results – ${symbol()}</h3>
+   Capital: ${money(capital)}<br>
+   Risk per trade: ${money(risk)}<br>
+   Profit Lock: ${money(profitLock)}<br>
+   Total Trades: ${results.length}<br>
+   Wins: ${wins}<br>
+   Losses: ${results.length-wins}<br>
+   Win Rate: ${results.length?(wins/results.length*100).toFixed(2):0}%<br>
+   Net P&L: ${money(net)}<br>
+   Maximum Drawdown: ${money(maxDD)}
+   <hr>
+   ${results.map(t=>t.side+" | Qty "+t.qty+
+    " | "+money(t.pnl)+" | "+t.reason).join("<br>")}
+   `;
+
+  }catch(err){
+   result.innerText="Error: "+err.message;
+  }
+ };
+
+ reader.readAsText(file);
 }
 
+loadSettings();
+setInterval(update,1000);
+update();
 </script>
 </body>
 </html>
