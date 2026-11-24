@@ -89,6 +89,18 @@ input,select{background:#30445f;color:white}
 <p>Demo candles are generated every 5 seconds for testing, not every real 5-minute market interval.</p>
 <p>Keep this page open. Closing Chrome or stopping the phone may stop the simulator.</p>
 </div>
+ 
+<div class="card">
+  <h2>Historical Backtest</h2>
+  <p>Upload 5-minute historical candle CSV</p>
+  <label>Historical CSV File</label>
+  <input type="file" id="backtestFile" accept=".csv,text/csv">
+  <button onclick="runBacktest()">RUN BACKTEST</button>
+  <div id="backtestResult" class="log">
+    No backtest run yet.
+  </div>
+</div>
+
 </main>
 
 <script>
@@ -258,6 +270,178 @@ function newDemoDay(){
 }
 setInterval(update,1000);
 update();
+ 
+function runBacktest(){
+  const file = document.getElementById("backtestFile").files[0];
+  const result = document.getElementById("backtestResult");
+
+  if(!file){
+    result.innerText = "Please upload historical CSV data.";
+    return;
+  }
+
+  const reader = new FileReader();
+
+  reader.onload = function(e){
+    try{
+      const lines = e.target.result.trim().split(/\r?\n/);
+      const headers = lines[0].split(",").map(x=>x.trim().toLowerCase());
+      const idx = name => headers.indexOf(name);
+
+      const ti = idx("timestamp");
+      const oi = idx("open");
+      const hi = idx("high");
+      const li = idx("low");
+      const ci = idx("close");
+      const vi = idx("volume");
+
+      if([ti,oi,hi,li,ci,vi].some(x=>x<0))
+        throw new Error("Required columns: timestamp,open,high,low,close,volume");
+
+      const data = lines.slice(1).map(line=>{
+        const c=line.split(",");
+        return {
+          time:new Date(c[ti].trim().replace(" ","T")),
+          open:+c[oi], high:+c[hi],
+          low:+c[li], close:+c[ci],
+          volume:+c[vi]
+        };
+      }).filter(c=>!isNaN(c.time.getTime()) &&
+        [c.open,c.high,c.low,c.close,c.volume].every(Number.isFinite))
+       .sort((a,b)=>a.time-b.time);
+
+      if(data.length<100) throw new Error("Insufficient candle data.");
+
+      let trades=[], daily={}, vwapPV=0, vwapVol=0;
+      let day="", orbHigh=-Infinity, orbLow=Infinity;
+      let dayBars=[], done=false, dailyPnL=0;
+
+      function closeTrade(t,price,reason){
+        const pnl=(t.side==="BUY"?1:-1)*t.qty*(price-t.entry);
+        dailyPnL+=pnl;
+        trades.push({...t,exit:price,pnl,reason});
+        daily[t.day]=(daily[t.day]||0)+pnl;
+      }
+
+      for(let i=0;i<data.length;i++){
+        const c=data[i];
+        const d=c.time.toISOString().slice(0,10);
+        const hm=c.time.getHours()*60+c.time.getMinutes();
+
+        if(d!==day){
+          day=d; orbHigh=-Infinity; orbLow=Infinity;
+          dayBars=[]; done=false; dailyPnL=0;
+          vwapPV=0; vwapVol=0;
+        }
+
+        const typical=(c.high+c.low+c.close)/3;
+        vwapPV+=typical*c.volume;
+        vwapVol+=c.volume;
+        const vwap=vwapVol?vwapPV/vwapVol:0;
+
+        if(hm>=555 && hm<570){
+          orbHigh=Math.max(orbHigh,c.high);
+          orbLow=Math.min(orbLow,c.low);
+          dayBars.push(c);
+          continue;
+        }
+
+        if(hm<570 || hm>=910){
+          dayBars.push(c);
+          continue;
+        }
+
+        if(done || !Number.isFinite(orbHigh) ||
+           !Number.isFinite(orbLow)) {
+          dayBars.push(c);
+          continue;
+        }
+
+        const previous=data.slice(Math.max(0,i-20),i);
+        const avgVol=previous.length===20
+          ? previous.reduce((s,x)=>s+x.volume,0)/20 : 0;
+
+        const buy=c.close>orbHigh && c.close>vwap &&
+                  avgVol>0 && c.volume>=avgVol*1.5;
+        const sell=c.close<orbLow && c.close<vwap &&
+                   avgVol>0 && c.volume>=avgVol*1.5;
+
+        if(!buy && !sell){
+          dayBars.push(c);
+          continue;
+        }
+
+        const side=buy?"BUY":"SELL";
+        const entry=c.close;
+        const sl=buy?orbLow:orbHigh;
+        const distance=Math.abs(entry-sl);
+        const qty=distance>0?Math.floor(100/distance):0;
+
+        if(qty<1){
+          dayBars.push(c);
+          continue;
+        }
+
+        const target=buy
+          ?entry+2*distance:entry-2*distance;
+
+        const t={day:d,side,entry,sl,target,qty};
+
+        for(let j=i+1;j<data.length;j++){
+          const x=data[j];
+          if(x.time.toISOString().slice(0,10)!==d) break;
+
+          const stop=buy?x.low<=sl:x.high>=sl;
+          const profit=buy?x.high>=target:x.low<=target;
+
+          if(stop || profit){
+            closeTrade(t,stop?sl:target,
+                       stop?"STOP LOSS":"TARGET");
+            break;
+          }
+
+          if(j===data.length-1 ||
+             data[j+1].time.toISOString().slice(0,10)!==d){
+            closeTrade(t,x.close,"EOD");
+          }
+        }
+
+        done=true;
+        dayBars.push(c);
+      }
+
+      const wins=trades.filter(t=>t.pnl>0).length;
+      const losses=trades.length-wins;
+      const net=trades.reduce((s,t)=>s+t.pnl,0);
+      let equity=0, peak=0, maxDD=0;
+
+      trades.forEach(t=>{
+        equity+=t.pnl;
+        peak=Math.max(peak,equity);
+        maxDD=Math.max(maxDD,peak-equity);
+      });
+
+      result.innerHTML=`
+        <h3>Backtest Results</h3>
+        Total Trades: ${trades.length}<br>
+        Wins: ${wins}<br>
+        Losses: ${losses}<br>
+        Win Rate: ${trades.length?(wins/trades.length*100).toFixed(2):0}%<br>
+        Net P&L: ₹${net.toFixed(2)}<br>
+        Maximum Drawdown: ₹${maxDD.toFixed(2)}
+        <hr>
+        ${trades.map(t=>
+          `${t.day} | ${t.side} | Qty ${t.qty} | ₹${t.pnl.toFixed(2)} | ${t.reason}`
+        ).join("<br>")}
+      `;
+    }catch(err){
+      result.innerText="Error: "+err.message;
+    }
+  };
+
+  reader.readAsText(file);
+}
+
 </script>
 </body>
 </html>
